@@ -15,7 +15,7 @@ public class WebController {
     @PostMapping("/start")
     public void start(@RequestBody(required = false) String body) {
         if (body == null || body.trim().isEmpty()) {
-            service.getLiveLogs().add("⚠️ No URLs provided");
+            service.addLiveLog("⚠️ No URLs provided");
             return;
         }
         List<String> urls = List.of(body.split("\\R"));

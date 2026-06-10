@@ -40,6 +40,20 @@ public class StockMonitorService {
     public void clearLiveLogs() { liveLogs.clear(); }
     public void clearBuyNowLogs() { buyNowLogs.clear(); }
 
+    public synchronized void addLiveLog(String message) {
+        liveLogs.add(message);
+        while (liveLogs.size() > 100) {
+            liveLogs.remove(0);
+        }
+    }
+
+    public synchronized void addBuyNowLog(String message) {
+        buyNowLogs.add(message);
+        while (buyNowLogs.size() > 50) {
+            buyNowLogs.remove(0);
+        }
+    }
+
     public String getBotToken() { return botToken; }
     public void setBotToken(String botToken) { this.botToken = botToken; }
 
@@ -67,7 +81,7 @@ public class StockMonitorService {
 
     public synchronized void start(List<String> urls) {
         if (running) {
-            liveLogs.add("⚠️ Already running");
+            addLiveLog("⚠️ Already running");
             return;
         }
 
@@ -75,7 +89,7 @@ public class StockMonitorService {
         liveLogs.clear();
         buyNowLogs.clear();
         completedChecks.clear();
-        liveLogs.add("✅ Started monitoring with engine: " + engine);
+        addLiveLog("✅ Started monitoring with engine: " + engine);
 
 
         executor = Executors.newSingleThreadExecutor();
@@ -88,7 +102,7 @@ public class StockMonitorService {
             executor.shutdownNow();
             executor = null;
         }
-        liveLogs.add("🛑 Monitoring stopped");
+        addLiveLog("🛑 Monitoring stopped");
     }
 
     private void runMonitoringLoop(List<String> urls) {
@@ -98,7 +112,7 @@ public class StockMonitorService {
             int cycle = 1;
 
             while (running) {
-                liveLogs.add("🔄 Cycle #" + cycle + " started (Parallel execution)");
+                addLiveLog("🔄 Cycle #" + cycle + " started (Parallel execution)");
 
                 long totalTargetChecks = targets.size();
                 
@@ -112,7 +126,7 @@ public class StockMonitorService {
                 }
 
                 if (activeTargets.isEmpty()) {
-                    liveLogs.add("✅ All monitored products completed. Stopping service.");
+                    addLiveLog("✅ All monitored products completed. Stopping service.");
                     running = false;
                     break;
                 }
@@ -131,11 +145,11 @@ public class StockMonitorService {
                         String checkKey = url + "|" + (pincode != null ? pincode : (rowLat != null ? (rowLat + "_" + rowLon) : "DEFAULT"));
 
                         if (pincode != null) {
-                            liveLogs.add("🔍 Checking: " + url + " (pincode: " + pincode + ")");
+                            addLiveLog("🔍 Checking: " + url + " (pincode: " + pincode + ")");
                         } else if (rowLat != null && rowLon != null) {
-                            liveLogs.add("🔍 Checking: " + url + " (GPS: [" + rowLat + ", " + rowLon + "])");
+                            addLiveLog("🔍 Checking: " + url + " (GPS: [" + rowLat + ", " + rowLon + "])");
                         } else {
-                            liveLogs.add("🔍 Checking: " + url);
+                            addLiveLog("🔍 Checking: " + url);
                         }
 
                         boolean inStock = false;
@@ -144,23 +158,23 @@ public class StockMonitorService {
                                 inStock = checkStockPlaywright(url, selector, pincode, rowLat, rowLon);
                             } else {
                                 if (pincode != null || rowLat != null) {
-                                    liveLogs.add("⚠️ Jsoup engine does not support pincode geolocation flow. Skipping pincode/GPS logic.");
+                                    addLiveLog("⚠️ Jsoup engine does not support pincode geolocation flow. Skipping pincode/GPS logic.");
                                 }
                                 inStock = checkStockJsoup(url, selector);
                             }
 
                             if (inStock) {
                                 String pincodeSuffix = pincode != null ? " (Pincode: " + pincode + ")" : "";
-                                liveLogs.add("🟢 IN STOCK: " + url + pincodeSuffix);
-                                buyNowLogs.add("🎉 IN STOCK: " + url + pincodeSuffix);
+                                addLiveLog("🟢 IN STOCK: " + url + pincodeSuffix);
+                                addBuyNowLog("🎉 IN STOCK: " + url + pincodeSuffix);
                                 sendTelegramMessage("🔔 *Product IN STOCK!*\n\nGrab it now!" + pincodeSuffix + "\n🔗 Link: " + url);
                                 completedChecks.add(checkKey);
-                                liveLogs.add("🛑 Stopped monitoring (Stock Found): " + url + pincodeSuffix);
+                                addLiveLog("🛑 Stopped monitoring (Stock Found): " + url + pincodeSuffix);
                             } else {
-                                liveLogs.add("🔴 OUT OF STOCK: " + url + (pincode != null ? " (Pincode: " + pincode + ")" : ""));
+                                addLiveLog("🔴 OUT OF STOCK: " + url + (pincode != null ? " (Pincode: " + pincode + ")" : ""));
                             }
                         } catch (Exception e) {
-                            liveLogs.add("❌ ERROR checking " + url + (pincode != null ? " (Pincode: " + pincode + ")" : "") + ": " + e.getMessage());
+                            addLiveLog("❌ ERROR checking " + url + (pincode != null ? " (Pincode: " + pincode + ")" : "") + ": " + e.getMessage());
                         }
                     }));
                 }
@@ -173,13 +187,13 @@ public class StockMonitorService {
                 }
 
                 if (completedChecks.size() >= totalTargetChecks && totalTargetChecks > 0) {
-                    liveLogs.add("✅ All monitored products completed. Stopping service.");
+                    addLiveLog("✅ All monitored products completed. Stopping service.");
                     running = false;
                     break;
                 }
 
                 if (!running) break;
-                liveLogs.add("😴 Sleeping for " + checkIntervalMs + " ms before next cycle...");
+                addLiveLog("😴 Sleeping for " + checkIntervalMs + " ms before next cycle...");
                 cycle++;
 
                 long endSleepTime = System.currentTimeMillis() + checkIntervalMs;
@@ -191,12 +205,12 @@ public class StockMonitorService {
                 }
             }
         } catch (InterruptedException e) {
-            liveLogs.add("ℹ️ Monitoring loop interrupted.");
+            addLiveLog("ℹ️ Monitoring loop interrupted.");
         } catch (Exception e) {
-            liveLogs.add("❌ Monitor loop fatal error: " + e.getMessage());
+            addLiveLog("❌ Monitor loop fatal error: " + e.getMessage());
         } finally {
             pool.shutdownNow();
-            liveLogs.add("🧹 Resources cleaned up.");
+            addLiveLog("🧹 Resources cleaned up.");
         }
     }
 
@@ -331,7 +345,7 @@ public class StockMonitorService {
                         }
                         Thread.sleep(3000); // Wait for the page/stock state to update
                     } catch (Exception e) {
-                        liveLogs.add("⚠️ Warning: Failed to set Blinkit pincode " + pincode + ": " + e.getMessage());
+                        addLiveLog("⚠️ Warning: Failed to set Blinkit pincode " + pincode + ": " + e.getMessage());
                     }
                 }
 
@@ -382,7 +396,7 @@ public class StockMonitorService {
         if (botToken == null || botToken.trim().isEmpty() ||
                 chatId == null || chatId.trim().isEmpty() ||
                 botToken.contains("YOUR_TELEGRAM_BOT_TOKEN")) {
-            liveLogs.add("⚠️ Telegram alert skipped (not configured)");
+            addLiveLog("⚠️ Telegram alert skipped (not configured)");
             return;
         }
 
@@ -404,10 +418,10 @@ public class StockMonitorService {
 
             java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                liveLogs.add("❌ Failed to send Telegram alert: Status " + response.statusCode());
+                addLiveLog("❌ Failed to send Telegram alert: Status " + response.statusCode());
             }
         } catch (Exception e) {
-            liveLogs.add("❌ Telegram error: " + e.getMessage());
+            addLiveLog("❌ Telegram error: " + e.getMessage());
         }
     }
 
