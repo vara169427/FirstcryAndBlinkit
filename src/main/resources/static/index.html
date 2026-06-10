@@ -8,6 +8,9 @@
     <!-- Google Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
+    <!-- SheetJS (XLSX) library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #111827 100%);
@@ -416,8 +419,13 @@
         <div id="productRows">
             <!-- Dynamic rows will be inserted here -->
         </div>
-        <div class="button-group" style="margin-top: 15px;">
+        <div class="button-group" style="margin-top: 15px; align-items: center; gap: 15px;">
             <button class="btn btn-secondary" onclick="addProductRow()">➕ Add Product</button>
+            <div style="position: relative; display: inline-block;">
+                <button class="btn btn-secondary" onclick="document.getElementById('excelFileInput').click()">📤 Upload Excel (.xlsx)</button>
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelUpload(event)">
+            </div>
+            <a href="#" style="color: var(--primary); font-size: 0.85rem; text-decoration: none; font-weight: 500;" onclick="downloadSampleExcel(event)">📥 Download Sample Excel</a>
         </div>
         <br>
         <div class="button-group">
@@ -777,6 +785,114 @@
                 updateStatusBadge(data.running);
             });
     }, 2000);
+
+    // Handle excel upload parsing
+    function handleExcelUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                
+                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (rows.length === 0) {
+                    alert("❌ The selected excel file is empty.");
+                    return;
+                }
+                
+                // Determine headers or indices
+                let urlIdx = 0, selectorIdx = 1, pincodeIdx = 2, latIdx = 3, lonIdx = 4;
+                let startRow = 0;
+                
+                const firstRow = rows[0].map(val => String(val || '').trim().toLowerCase());
+                const hasHeader = firstRow.some(val => val.includes('url') || val.includes('link') || val.includes('pincode'));
+                
+                if (hasHeader) {
+                    startRow = 1;
+                    urlIdx = firstRow.findIndex(val => val.includes('url') || val.includes('link'));
+                    selectorIdx = firstRow.findIndex(val => val.includes('selector') || val.includes('css'));
+                    pincodeIdx = firstRow.findIndex(val => val.includes('pincode') || val.includes('pin'));
+                    latIdx = firstRow.findIndex(val => val.includes('lat'));
+                    lonIdx = firstRow.findIndex(val => val.includes('lon') || val.includes('lng'));
+                    
+                    if (urlIdx === -1) urlIdx = 0;
+                    if (selectorIdx === -1) selectorIdx = 1;
+                    if (pincodeIdx === -1) pincodeIdx = 2;
+                    if (latIdx === -1) latIdx = 3;
+                    if (lonIdx === -1) lonIdx = 4;
+                }
+                
+                let loadedCount = 0;
+                const container = document.getElementById('productRows');
+                
+                // Clear initial single empty row if it has no URL
+                const existingRows = container.querySelectorAll('.product-row-grid');
+                if (existingRows.length === 1) {
+                    const firstUrlInput = existingRows[0].querySelector('.product-url');
+                    if (!firstUrlInput.value.trim()) {
+                        container.innerHTML = '';
+                    }
+                }
+                
+                for (let i = startRow; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const url = String(row[urlIdx] || '').trim();
+                    if (!url) continue;
+                    
+                    const selector = selectorIdx !== -1 && row[selectorIdx] !== undefined ? String(row[selectorIdx]).trim() : '';
+                    const pincode = pincodeIdx !== -1 && row[pincodeIdx] !== undefined ? String(row[pincodeIdx]).trim() : '';
+                    const lat = latIdx !== -1 && row[latIdx] !== undefined ? String(row[latIdx]).trim() : '';
+                    const lon = lonIdx !== -1 && row[lonIdx] !== undefined ? String(row[lonIdx]).trim() : '';
+                    
+                    addProductRow(url, selector, pincode, lat, lon);
+                    loadedCount++;
+                }
+                
+                if (loadedCount > 0) {
+                    saveProductsToLocalStorage();
+                    alert(`✅ Successfully loaded ${loadedCount} products from Excel!`);
+                } else {
+                    alert("⚠️ No products with valid URLs were found in the Excel file.");
+                }
+                
+                event.target.value = '';
+                
+            } catch (error) {
+                console.error("Excel parsing error:", error);
+                alert("❌ Failed to parse Excel file: " + error.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // Dynamic Excel Template generation
+    function downloadSampleExcel(event) {
+        if (event) event.preventDefault();
+        try {
+            const headers = [["Product URL", "Selector (Optional)", "Pincode (Optional)", "Latitude (Optional)", "Longitude (Optional)"]];
+            const sampleRows = [
+                ["https://blinkit.com/prn/sample-item/id/123", "", "500062, 500081", "", ""],
+                ["https://www.amazon.in/dp/B0xxxxxx", "#add-to-cart-button", "", "", ""]
+            ];
+            
+            const worksheet = XLSX.utils.aoa_to_sheet(headers.concat(sampleRows));
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+            
+            XLSX.writeFile(workbook, "stock_monitor_template.xlsx");
+        } catch (e) {
+            alert("Failed to generate sample Excel: " + e.message);
+        }
+    }
 
     // Initial setups
     loadSettings();
