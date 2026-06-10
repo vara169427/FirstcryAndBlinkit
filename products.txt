@@ -1,0 +1,6 @@
+# Add your Blinkit product URLs here (one URL per line)
+# Lines starting with '#' or empty lines are ignored.
+
+https://blinkit.com/prn/x/prid/720262
+https://blinkit.com/prn/x/prid/772661
+https://blinkit.com/prn/x/prid/746594

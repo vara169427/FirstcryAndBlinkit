@@ -1,0 +1,18 @@
+# Add your Blinkit product URLs here (one URL per line)
+# Lines starting with '#' or empty lines are ignored.
+
+https://blinkit.com/prn/hot-wheels-ferrari-dino-206gt-die-cast-car/prid/771903
+https://blinkit.com/prn/hot-wheels-2020-ford-mustang-shelby-gt500-die-cast-car/prid/772615
+https://blinkit.com/prn/x/prid/772660
+https://blinkit.com/prn/x/prid/772306
+https://blinkit.com/prn/x/prid/771881
+https://blinkit.com/prn/x/prid/772265
+https://blinkit.com/prn/x/prid/772264
+https://blinkit.com/prn/x/prid/771643
+https://blinkit.com/prn/x/prid/772308
+https://blinkit.com/prn/x/prid/771929
+https://blinkit.com/prn/x/prid/771935
+https://blinkit.com/prn/x/prid/771911
+https://blinkit.com/prn/x/prid/771916
+https://blinkit.com/prn/x/prid/771923
+https://blinkit.com/prn/x/prid/771933
