@@ -272,7 +272,9 @@ public class StockMonitorService {
 
     private boolean checkStockPlaywright(String url, String selector, String pincode, Double latitude, Double longitude) throws Exception {
         try (com.microsoft.playwright.Playwright playwright = com.microsoft.playwright.Playwright.create();
-             com.microsoft.playwright.Browser browser = playwright.chromium().launch(new com.microsoft.playwright.BrowserType.LaunchOptions().setHeadless(true))) {
+             com.microsoft.playwright.Browser browser = playwright.chromium().launch(new com.microsoft.playwright.BrowserType.LaunchOptions()
+                     .setHeadless(true)
+                     .setChromiumSandbox(false))) {
             
             com.microsoft.playwright.Browser.NewContextOptions options = new com.microsoft.playwright.Browser.NewContextOptions()
                     .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
