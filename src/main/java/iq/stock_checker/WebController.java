@@ -98,4 +98,16 @@ public class WebController {
             }
         }
     }
+
+    @GetMapping(value = "/debug/screenshot", produces = org.springframework.http.MediaType.IMAGE_PNG_VALUE)
+    @ResponseBody
+    public byte[] getDebugScreenshot() {
+        byte[] screenshot = StockMonitorService.getLastScreenshot();
+        if (screenshot == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "No debug screenshot captured yet"
+            );
+        }
+        return screenshot;
+    }
 }
