@@ -1,11 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CloudFormation template to deploy the Stock Checker application on Amazon EC2.'
+Description: 'CloudFormation template to deploy the Stock Checker application on Amazon EC2 using Amazon Linux 2023 (with optional SSH keys and SSM Session Manager support).'
 
 Parameters:
   KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
-    Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+    Description: (Optional) Name of an existing EC2 KeyPair to enable SSH access. Leave blank to connect keyless via AWS Systems Manager (SSM).
+    Type: String
+    Default: ""
 
   InstanceType:
     Description: WebServer EC2 instance type (t3.small or t3.medium recommended for Playwright/Chromium)
@@ -20,7 +20,7 @@ Parameters:
     ConstraintDescription: Must be a valid EC2 instance type.
 
   SSHLocation:
-    Description: The IP address range that can be used to SSH to the EC2 instances
+    Description: The IP address range that can be used to SSH to the EC2 instances (ignored if KeyName is blank)
     Type: String
     MinLength: 9
     MaxLength: 18
@@ -30,20 +30,46 @@ Parameters:
 
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/query-active/image-id'
-    Description: Latest Ubuntu 22.04 LTS AMI (retrieved dynamically from AWS Systems Manager Parameter Store).
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+    Description: Latest Amazon Linux 2023 AMI (retrieved dynamically from AWS Systems Manager Parameter Store).
+
+Conditions:
+  HasKeyPair: !Not [ !Equals [ !Ref KeyName, "" ] ]
 
 Resources:
+  # IAM Role for EC2 to enable Systems Manager (SSM) Session Manager
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref InstanceType
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
-      KeyName: !Ref KeyName
+      KeyName: !If [ HasKeyPair, !Ref KeyName, !Ref "AWS::NoValue" ]
+      IamInstanceProfile: !Ref EC2InstanceProfile
       ImageId: !Ref LatestAmiId
       BlockDeviceMappings:
-        - DeviceName: /dev/sda1
+        - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: 20
             VolumeType: gp3
@@ -51,29 +77,18 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          # Update system packages
-          apt-get update -y
+          # Update packages
+          dnf update -y
           
-          # Install prerequisite packages for Docker
-          apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-          
-          # Add Docker's official GPG key
-          mkdir -p /etc/apt/keyrings
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-          
-          # Set up the stable Docker repository
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-          
-          # Install Docker Engine
-          apt-get update -y
-          apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+          # Install Docker
+          dnf install -y docker
           
           # Start and enable Docker service
           systemctl start docker
           systemctl enable docker
           
-          # Add the default ubuntu user to the docker group so they don't need sudo
-          usermod -aG docker ubuntu
+          # Add the default ec2-user to the docker group
+          usermod -aG docker ec2-user
 
       Tags:
         - Key: Name
@@ -82,12 +97,15 @@ Resources:
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow SSH, HTTP, and Web App Port (9091) access
+      GroupDescription: Allow SSH and Web App Port (9091) access
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: !Ref SSHLocation
+        - !If
+          - HasKeyPair
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: !Ref SSHLocation
+          - !Ref "AWS::NoValue"
         - IpProtocol: tcp
           FromPort: 9091
           ToPort: 9091

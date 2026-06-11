@@ -9,7 +9,7 @@ param (
     [string]$KeyPath,
 
     [Parameter(Mandatory=$false)]
-    [string]$Username = "ubuntu"
+    [string]$Username = "ec2-user"
 )
 
 $ErrorActionPreference = "Stop"
