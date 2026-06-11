@@ -99,15 +99,18 @@ public class WebController {
         }
     }
 
-    @GetMapping(value = "/debug/screenshot", produces = org.springframework.http.MediaType.IMAGE_PNG_VALUE)
-    @ResponseBody
-    public byte[] getDebugScreenshot() {
+    @GetMapping(value = "/debug/screenshot")
+    public org.springframework.http.ResponseEntity<?> getDebugScreenshot() {
         byte[] screenshot = StockMonitorService.getLastScreenshot();
         if (screenshot == null) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.NOT_FOUND, "No debug screenshot captured yet"
-            );
+            return org.springframework.http.ResponseEntity
+                .status(org.springframework.http.HttpStatus.OK)
+                .contentType(org.springframework.http.MediaType.TEXT_HTML)
+                .body("<html><body><h2>No screenshot captured yet. Please start the monitoring service and wait for a check cycle to run.</h2></body></html>");
         }
-        return screenshot;
+        return org.springframework.http.ResponseEntity
+            .status(org.springframework.http.HttpStatus.OK)
+            .contentType(org.springframework.http.MediaType.IMAGE_PNG)
+            .body(screenshot);
     }
 }

@@ -15,6 +15,9 @@ import java.util.concurrent.Executors;
 @Service
 public class StockMonitorService {
 
+    private static volatile byte[] lastScreenshot = null;
+    public static byte[] getLastScreenshot() { return lastScreenshot; }
+
     private volatile String botToken = "";
     private volatile String chatId = "";
     private volatile String defaultSelector = ".J16SB_42.cl_fff.acttext";
@@ -349,6 +352,13 @@ public class StockMonitorService {
                     } catch (Exception e) {
                         addLiveLog("⚠️ Warning: Failed to set Blinkit pincode " + pincode + ": " + e.getMessage());
                     }
+                }
+
+                // Take a screenshot before checking the stock to see what's loaded on the page
+                try {
+                    lastScreenshot = page.screenshot(new com.microsoft.playwright.Page.ScreenshotOptions().setFullPage(true));
+                } catch (Exception se) {
+                    System.err.println("Failed to capture screenshot: " + se.getMessage());
                 }
 
                 return checkStockPlaywrightNoNav(page, finalSelector);
