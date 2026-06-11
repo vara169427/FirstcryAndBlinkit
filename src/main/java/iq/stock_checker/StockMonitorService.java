@@ -20,6 +20,7 @@ public class StockMonitorService {
 
     private volatile String botToken = "";
     private volatile String chatId = "";
+    private volatile String proxyServer = "";
     private volatile String defaultSelector = ".J16SB_42.cl_fff.acttext";
     private volatile String engine = "PLAYWRIGHT"; // "PLAYWRIGHT" or "JSOUP"
     private volatile int checkIntervalMs = 10000;
@@ -62,6 +63,9 @@ public class StockMonitorService {
 
     public String getChatId() { return chatId; }
     public void setChatId(String chatId) { this.chatId = chatId; }
+
+    public String getProxyServer() { return proxyServer; }
+    public void setProxyServer(String proxyServer) { this.proxyServer = proxyServer; }
 
     public String getDefaultSelector() { return defaultSelector; }
     public void setDefaultSelector(String defaultSelector) { this.defaultSelector = defaultSelector; }
@@ -274,10 +278,38 @@ public class StockMonitorService {
     }
 
     private boolean checkStockPlaywright(String url, String selector, String pincode, Double latitude, Double longitude) throws Exception {
+        com.microsoft.playwright.options.Proxy proxy = null;
+        if (proxyServer != null && !proxyServer.trim().isEmpty()) {
+            try {
+                java.net.URI uri = java.net.URI.create(proxyServer);
+                String userInfo = uri.getUserInfo();
+                String hostAndPort = uri.getHost();
+                if (uri.getPort() != -1) {
+                    hostAndPort += ":" + uri.getPort();
+                }
+                String scheme = uri.getScheme();
+                String proxyUrl = (scheme != null ? scheme : "http") + "://" + hostAndPort;
+                
+                proxy = new com.microsoft.playwright.options.Proxy(proxyUrl);
+                if (userInfo != null && userInfo.contains(":")) {
+                    String[] userPass = userInfo.split(":", 2);
+                    proxy.setUsername(userPass[0]);
+                    proxy.setPassword(userPass[1]);
+                }
+            } catch (Exception e) {
+                addLiveLog("⚠️ Warning: Invalid proxy format: " + e.getMessage());
+            }
+        }
+
+        com.microsoft.playwright.BrowserType.LaunchOptions launchOptions = new com.microsoft.playwright.BrowserType.LaunchOptions()
+                .setHeadless(true)
+                .setChromiumSandbox(false);
+        if (proxy != null) {
+            launchOptions.setProxy(proxy);
+        }
+
         try (com.microsoft.playwright.Playwright playwright = com.microsoft.playwright.Playwright.create();
-             com.microsoft.playwright.Browser browser = playwright.chromium().launch(new com.microsoft.playwright.BrowserType.LaunchOptions()
-                     .setHeadless(true)
-                     .setChromiumSandbox(false))) {
+             com.microsoft.playwright.Browser browser = playwright.chromium().launch(launchOptions)) {
             
             com.microsoft.playwright.Browser.NewContextOptions options = new com.microsoft.playwright.Browser.NewContextOptions()
                     .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");

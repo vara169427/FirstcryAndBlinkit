@@ -52,6 +52,7 @@ public class WebController {
         return Map.of(
             "botToken", service.getBotToken() == null ? "" : service.getBotToken(),
             "chatId", service.getChatId() == null ? "" : service.getChatId(),
+            "proxyServer", service.getProxyServer() == null ? "" : service.getProxyServer(),
             "defaultSelector", service.getDefaultSelector() == null ? "" : service.getDefaultSelector(),
             "engine", service.getEngine() == null ? "" : service.getEngine(),
             "checkIntervalMs", service.getCheckIntervalMs(),
@@ -68,6 +69,9 @@ public class WebController {
         }
         if (body.containsKey("chatId")) {
             service.setChatId((String) body.get("chatId"));
+        }
+        if (body.containsKey("proxyServer")) {
+            service.setProxyServer((String) body.get("proxyServer"));
         }
         if (body.containsKey("defaultSelector")) {
             service.setDefaultSelector((String) body.get("defaultSelector"));

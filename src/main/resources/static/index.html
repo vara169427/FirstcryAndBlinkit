@@ -385,6 +385,14 @@
 
         <div class="form-grid" style="grid-template-columns: 1fr;">
             <div class="form-group">
+                <label for="proxyServer">Proxy Server (Optional)</label>
+                <input id="proxyServer" type="text" placeholder="e.g. http://proxyhost:port or http://user:pass@proxyhost:port">
+                <div class="helper-text">Bypasses Cloudflare blocking on EC2. Supports HTTP/SOCKS5 rotating residential proxies.</div>
+            </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+            <div class="form-group">
                 <label for="citySearch">Search Location / City Name</label>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input id="citySearch" type="text" placeholder="e.g. Hyderabad, India" style="flex: 1;">
@@ -471,6 +479,7 @@
                 document.getElementById('defaultSelector').value = data.defaultSelector || '';
                 document.getElementById('botToken').value = data.botToken || '';
                 document.getElementById('chatId').value = data.chatId || '';
+                document.getElementById('proxyServer').value = data.proxyServer || '';
                 document.getElementById('latitude').value = data.latitude !== undefined && data.latitude !== null ? data.latitude : '';
                 document.getElementById('longitude').value = data.longitude !== undefined && data.longitude !== null ? data.longitude : '';
                 
@@ -489,6 +498,7 @@
             defaultSelector: document.getElementById('defaultSelector').value,
             botToken: document.getElementById('botToken').value,
             chatId: document.getElementById('chatId').value,
+            proxyServer: document.getElementById('proxyServer').value.trim(),
             latitude: document.getElementById('latitude').value !== '' ? parseFloat(document.getElementById('latitude').value) : null,
             longitude: document.getElementById('longitude').value !== '' ? parseFloat(document.getElementById('longitude').value) : null
         };
