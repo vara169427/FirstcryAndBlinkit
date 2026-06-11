@@ -2,7 +2,7 @@
 FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY . .
-RUN mvn clean package -DskipTests
+RUN mvn clean package -Dmaven.test.skip=true
 
 # Stage 2: Runtime image containing Playwright and system dependencies
 FROM mcr.microsoft.com/playwright/java:v1.54.0-jammy
